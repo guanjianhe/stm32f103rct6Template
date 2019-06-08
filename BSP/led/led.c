@@ -1,32 +1,126 @@
 #include "led.h"
 
-
-#define RCC_LED     RCC_APB2Periph_GPIOA
-#define PORT_LED    GPIOA
-#define PIN_LED     GPIO_Pin_8
-
-/* 初始化LED */
-void InitLed( void )
+typedef struct led_info
 {
-    /*定义一个GPIO_InitTypeDef类型的结构体*/
+    uint32_t RCC_APB2Periph;
+    GPIO_TypeDef* GPIOx;
+    uint16_t GPIO_Pin;
+    uint8_t ON_Sta;
+} led_info_t;
+
+static const led_info_t g_led_info[] =
+{
+    {
+        .RCC_APB2Periph = RCC_APB2Periph_GPIOC,
+        .GPIOx = GPIOC,
+        .GPIO_Pin = GPIO_Pin_13,
+        .ON_Sta = 0,
+    },
+};
+
+static const uint8_t LED_NUM = sizeof(g_led_info) / sizeof(g_led_info[0]);
+
+static void LED_GPIO_Configuration(void)
+{
+    int i;
     GPIO_InitTypeDef GPIO_InitStructure;
 
-    /*开启GPIOC外设时钟*/
-    RCC_APB2PeriphClockCmd( RCC_LED, ENABLE );
-
-    /* 选择要控制的GPIOB引脚 */
-    GPIO_InitStructure.GPIO_Pin = PIN_LED;
-
-    /*设置引脚速率为50MHz */
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-
-    /*设置引脚模式为通用推挽输出*/
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-
-    /*调用库函数，初始化GPIOA*/
-    GPIO_Init( PORT_LED, &GPIO_InitStructure );
-
-    /* 关闭led灯 */
-    GPIO_SetBits( PORT_LED, PIN_LED );
+    for (i = 0; i < LED_NUM; i++)
+    {
+        RCC_APB2PeriphClockCmd(g_led_info[i].RCC_APB2Periph, ENABLE);
+        GPIO_InitStructure.GPIO_Pin = g_led_info[i].GPIO_Pin;
+        GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+        GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+        GPIO_Init(g_led_info[i].GPIOx, &GPIO_InitStructure);
+        GPIO_WriteBit(g_led_info[i].GPIOx,
+                      g_led_info[i].GPIO_Pin,
+                      (BitAction)!g_led_info[i].ON_Sta);
+    }
 }
 
+void led_init(void)
+{
+    LED_GPIO_Configuration();
+}
+
+int led_set(uint8_t led_id, uint8_t state)
+{
+    int retval = 0;
+
+    if (led_id < LED_NUM)
+    {
+        if (state)
+        {
+            GPIO_WriteBit(g_led_info[led_id].GPIOx,
+                          g_led_info[led_id].GPIO_Pin,
+                          (BitAction)g_led_info[led_id].ON_Sta);
+        }
+        else
+        {
+            GPIO_WriteBit(g_led_info[led_id].GPIOx,
+                          g_led_info[led_id].GPIO_Pin,
+                          (BitAction)!g_led_info[led_id].ON_Sta);
+        }
+
+    }
+    else
+    {
+        retval = -1;
+    }
+
+    return retval;
+
+}
+
+int led_on(uint8_t led_id)
+{
+    int retval = 0;
+
+    if (led_id < LED_NUM)
+    {
+        GPIO_WriteBit(g_led_info[led_id].GPIOx,
+                      g_led_info[led_id].GPIO_Pin,
+                      (BitAction)g_led_info[led_id].ON_Sta);
+    }
+    else
+    {
+        retval = -1;
+    }
+
+    return retval;
+
+}
+
+int led_off(uint8_t led_id)
+{
+    int retval = 0;
+
+    if (led_id < LED_NUM)
+    {
+        GPIO_WriteBit(g_led_info[led_id].GPIOx,
+                      g_led_info[led_id].GPIO_Pin,
+                      (BitAction)!g_led_info[led_id].ON_Sta);
+    }
+    else
+    {
+        retval = -1;
+    }
+
+    return retval;
+}
+
+int led_toggle(uint8_t led_id)
+{
+    int retval = 0;
+
+    if (led_id < LED_NUM)
+    {
+        g_led_info[led_id].GPIOx->ODR ^= g_led_info[led_id].GPIO_Pin;
+    }
+    else
+    {
+        retval = -1;
+    }
+
+    return retval;
+}
